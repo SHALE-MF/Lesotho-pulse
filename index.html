@@ -34,7 +34,6 @@
   a{color:var(--ochre);}
   .wrap{max-width:1200px;margin:0 auto;padding:0 24px;}
 
-  /* ---------- Header / pulse ---------- */
   header{padding:48px 0 0;}
   .eyebrow{
     font-family:'IBM Plex Mono',monospace;
@@ -70,10 +69,8 @@
   }
   .live-label{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:8px;}
 
-  /* ---------- Motif divider ---------- */
   .motif{height:14px;margin:36px 0;opacity:.9;}
 
-  /* ---------- Sections ---------- */
   section{padding:8px 0 36px;}
   .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
   h2{
@@ -112,7 +109,6 @@
   .spark polyline{fill:none;stroke:var(--ochre);stroke-width:1.6;}
   .peg-note{font-size:11px;color:var(--text-dim);margin-top:6px;}
 
-  /* weather cards */
   .wcard{border-top:3px solid var(--rule);}
   .wcard .district{font-family:'Fraunces',serif;font-weight:600;font-size:18px;margin:0 0 2px;}
   .wcard .temp{font-family:'IBM Plex Mono',monospace;font-size:32px;font-weight:500;margin:2px 0 4px;}
@@ -157,7 +153,6 @@
   </header>
 
   <svg class="motif" viewBox="0 0 400 14" preserveAspectRatio="none" aria-hidden="true">
-    <!-- geometric divider inspired by Basotho chevron weaving patterns -->
     <polyline points="0,14 20,0 40,14 60,0 80,14 100,0 120,14 140,0 160,14 180,0 200,14 220,0 240,14 260,0 280,14 300,0 320,14 340,0 360,14 380,0 400,14" fill="none" stroke="#c9813f" stroke-width="1.4" opacity="0.55"/>
   </svg>
 
@@ -254,27 +249,42 @@ function deltaEl(pct){
 
 /* ---------------- Exchange rates ---------------- */
 async function loadFX(){
-  try{
-    const symbols = 'ZAR,EUR,GBP,CNY';
-    const latestRes = await fetch(`https://api.frankfurter.app/latest?from=USD&to=${symbols}`);
-    const latest = await latestRes.json();
+  const symbols = 'ZAR,EUR,GBP,CNY';
 
+  // Current rates and 7-day history are fetched independently: if history
+  // fails, we still show current rates (without sparklines) instead of
+  // blanking the whole section.
+  let latest = null;
+  try{
+    const latestRes = await fetch(`https://api.frankfurter.app/latest?from=USD&to=${symbols}`);
+    if(!latestRes.ok) throw new Error(`latest fetch failed: ${latestRes.status}`);
+    latest = await latestRes.json();
+  }catch(e){
+    console.error('[Lesotho Pulse] FX latest rates failed:', e);
+    document.getElementById('fxGrid').innerHTML = '<div class="placeholder">Exchange rate data unavailable right now. Open the browser console for details.</div>';
+    return;
+  }
+
+  let series = {ZAR:[], EUR:[], GBP:[], CNY:[]};
+  try{
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate()-7);
     const iso = d => d.toISOString().slice(0,10);
     const histRes = await fetch(`https://api.frankfurter.app/${iso(start)}..${iso(end)}?from=USD&to=${symbols}`);
+    if(!histRes.ok) throw new Error(`history fetch failed: ${histRes.status}`);
     const hist = await histRes.json();
     const dates = Object.keys(hist.rates || {}).sort();
-
-    const series = {};
     ['ZAR','EUR','GBP','CNY'].forEach(sym => {
       series[sym] = dates.map(dt => hist.rates[dt][sym]).filter(v => v !== undefined);
     });
+  }catch(e){
+    console.error('[Lesotho Pulse] FX 7-day history failed (showing current rates without sparklines):', e);
+  }
 
+  try{
     const cards = [];
 
-    // LSL derived from ZAR peg (1:1)
     const zarSeries = series['ZAR'] || [];
     const zarNow = latest.rates.ZAR;
     const zarWeekAgo = zarSeries[0] ?? zarNow;
@@ -306,12 +316,12 @@ async function loadFX(){
     document.getElementById('fxGrid').innerHTML = cards.join('');
     document.getElementById('fxUpdated').textContent = `Updated ${timeNow()}`;
 
-    // drive the header pulse line amplitude off today's ZAR volatility
     const amp = Math.min(20, Math.max(4, Math.abs(zarPct)*6));
     document.documentElement.style.setProperty('--amp', amp+'px');
     drawPulse(amp);
   }catch(e){
-    document.getElementById('fxGrid').innerHTML = '<div class="placeholder">Exchange rate data unavailable right now.</div>';
+    console.error('[Lesotho Pulse] FX render failed:', e);
+    document.getElementById('fxGrid').innerHTML = '<div class="placeholder">Exchange rate data unavailable right now. Open the browser console for details.</div>';
   }
 }
 
@@ -319,6 +329,7 @@ async function loadFX(){
 async function loadMarkets(){
   try{
     const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,pax-gold&vs_currencies=usd&include_24hr_change=true');
+    if(!res.ok) throw new Error(`markets fetch failed: ${res.status}`);
     const data = await res.json();
     const rows = [
       {label:'Gold (per oz, via PAXG)', key:'pax-gold'},
@@ -336,7 +347,8 @@ async function loadMarkets(){
     });
     document.getElementById('marketsGrid').innerHTML = cards.join('');
   }catch(e){
-    document.getElementById('marketsGrid').innerHTML = '<div class="placeholder">Market data unavailable right now.</div>';
+    console.error('[Lesotho Pulse] Markets fetch failed:', e);
+    document.getElementById('marketsGrid').innerHTML = '<div class="placeholder">Market data unavailable right now. Open the browser console for details.</div>';
   }
 }
 
@@ -367,6 +379,7 @@ async function loadWeather(){
     const lons = districts.map(d=>d.lon).join(',');
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,uv_index,precipitation_probability&daily=sunrise,sunset&timezone=Africa%2FMaseru`;
     const res = await fetch(url);
+    if(!res.ok) throw new Error(`weather fetch failed: ${res.status}`);
     const data = await res.json();
     const list = Array.isArray(data) ? data : [data];
 
@@ -395,7 +408,8 @@ async function loadWeather(){
     document.getElementById('wxGrid').innerHTML = cards.join('');
     document.getElementById('wxUpdated').textContent = `Updated ${timeNow()}`;
   }catch(e){
-    document.getElementById('wxGrid').innerHTML = '<div class="placeholder">Weather data unavailable right now.</div>';
+    console.error('[Lesotho Pulse] Weather fetch failed:', e);
+    document.getElementById('wxGrid').innerHTML = '<div class="placeholder">Weather data unavailable right now. Open the browser console for details.</div>';
   }
 }
 
