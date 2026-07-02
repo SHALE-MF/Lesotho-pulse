@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesotho Pulse — Live Economic &amp; Weather Signals</title>
+<meta name="description" content="A live dashboard of Lesotho's exchange rates, global markets, and district weather.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#10151c;
+    --surface:#182029;
+    --surface-2:#1f2933;
+    --ochre:#c9813f;
+    --green:#52806b;
+    --blue:#5f8fae;
+    --red:#b1503f;
+    --text:#ece4d6;
+    --text-dim:#9aa5ac;
+    --rule:rgba(236,228,214,0.12);
+    --amp: 6px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans',sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--ochre);}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 24px;}
+
+  /* ---------- Header / pulse ---------- */
+  header{padding:48px 0 0;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--text-dim);
+  }
+  h1{
+    font-family:'Fraunces',serif;
+    font-weight:700;
+    font-size:clamp(40px,7vw,84px);
+    margin:6px 0 4px;
+    letter-spacing:-0.01em;
+  }
+  .sub{color:var(--text-dim);font-size:16px;max-width:520px;margin:0 0 22px;}
+  .pulse-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:8px;}
+  .pulse-svg{flex:1;min-width:240px;height:56px;}
+  .pulse-svg path{
+    fill:none;stroke:var(--ochre);stroke-width:2;
+    stroke-dasharray:600;
+    animation:travel 4s linear infinite;
+  }
+  @keyframes travel{
+    from{stroke-dashoffset:0;}
+    to{stroke-dashoffset:-600;}
+  }
+  .live-dot{width:9px;height:9px;border-radius:50%;background:var(--green);
+    box-shadow:0 0 0 0 rgba(82,128,107,.6);
+    animation:blip 2.2s ease-out infinite;flex:none;}
+  @keyframes blip{
+    0%{box-shadow:0 0 0 0 rgba(82,128,107,.55);}
+    70%{box-shadow:0 0 0 9px rgba(82,128,107,0);}
+    100%{box-shadow:0 0 0 0 rgba(82,128,107,0);}
+  }
+  .live-label{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:8px;}
+
+  /* ---------- Motif divider ---------- */
+  .motif{height:14px;margin:36px 0;opacity:.9;}
+
+  /* ---------- Sections ---------- */
+  section{padding:8px 0 36px;}
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
+  h2{
+    font-family:'Fraunces',serif;font-weight:600;
+    font-size:28px;margin:0;
+  }
+  .refresh-tag{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim);}
+  .note{color:var(--text-dim);font-size:13.5px;margin:-6px 0 20px;max-width:640px;}
+
+  .grid{display:grid;gap:14px;}
+  .grid.fx{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));}
+  .grid.markets{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
+  .grid.weather{grid-template-columns:repeat(auto-fit,minmax(210px,1fr));}
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--rule);
+    border-radius:4px;
+    padding:16px 16px 14px;
+    position:relative;
+    overflow:hidden;
+  }
+  .card .tag{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;
+    color:var(--text-dim);text-transform:uppercase;
+  }
+  .card .figure{
+    font-family:'IBM Plex Mono',monospace;font-weight:500;
+    font-size:26px;margin:6px 0 2px;
+  }
+  .card .delta{font-size:13px;font-family:'IBM Plex Mono',monospace;}
+  .delta.up{color:var(--green);}
+  .delta.down{color:var(--red);}
+  .delta.flat{color:var(--text-dim);}
+  .spark{display:block;margin-top:10px;}
+  .spark polyline{fill:none;stroke:var(--ochre);stroke-width:1.6;}
+  .peg-note{font-size:11px;color:var(--text-dim);margin-top:6px;}
+
+  /* weather cards */
+  .wcard{border-top:3px solid var(--rule);}
+  .wcard .district{font-family:'Fraunces',serif;font-weight:600;font-size:18px;margin:0 0 2px;}
+  .wcard .temp{font-family:'IBM Plex Mono',monospace;font-size:32px;font-weight:500;margin:2px 0 4px;}
+  .wcard .meta{font-size:12.5px;color:var(--text-dim);display:grid;grid-template-columns:1fr 1fr;gap:2px 10px;margin-top:8px;}
+  .wcard .meta span b{color:var(--text);font-weight:500;}
+  .cold{border-top-color:var(--blue);}
+  .pleasant{border-top-color:var(--green);}
+  .warm{border-top-color:#d9a441;}
+  .hot{border-top-color:var(--red);}
+  .cold .temp{color:var(--blue);}
+  .pleasant .temp{color:var(--green);}
+  .warm .temp{color:#d9a441;}
+  .hot .temp{color:var(--red);}
+
+  .placeholder{color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:13px;}
+
+  footer{border-top:1px solid var(--rule);padding:32px 0 48px;color:var(--text-dim);font-size:13px;}
+  footer h3{color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 8px;}
+  footer .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px;margin-bottom:20px;}
+  footer ul{margin:0;padding-left:18px;}
+  .credit{border-top:1px solid var(--rule);padding-top:16px;margin-top:8px;}
+
+  @media (prefers-reduced-motion: reduce){
+    .pulse-svg path{animation:none;}
+    .live-dot{animation:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Maseru · Mountain Kingdom of Lesotho</div>
+    <h1>Lesotho Pulse</h1>
+    <p class="sub">Live exchange rates, global market signals, and district-by-district weather across the ten districts refreshed automatically in your browser.</p>
+    <div class="pulse-row">
+      <svg class="pulse-svg" viewBox="0 0 600 56" preserveAspectRatio="none">
+        <path id="pulsePath" d=""></path>
+      </svg>
+    </div>
+    <div class="live-label"><span class="live-dot"></span> LIVE — data refreshes on this page without a reload</div>
+  </header>
+
+  <svg class="motif" viewBox="0 0 400 14" preserveAspectRatio="none" aria-hidden="true">
+    <!-- geometric divider inspired by Basotho chevron weaving patterns -->
+    <polyline points="0,14 20,0 40,14 60,0 80,14 100,0 120,14 140,0 160,14 180,0 200,14 220,0 240,14 260,0 280,14 300,0 320,14 340,0 360,14 380,0 400,14" fill="none" stroke="#c9813f" stroke-width="1.4" opacity="0.55"/>
+  </svg>
+
+  <section id="economy">
+    <div class="section-head">
+      <h2>Economy</h2>
+      <span class="refresh-tag" id="fxUpdated">—</span>
+    </div>
+    <p class="note">Track the value of the Lesotho Loti against major world currencies in real time. Stay informed with the latest exchange rates to support travel, trade, business, and financial decisions.</p>
+    <div class="grid fx" id="fxGrid">
+      <div class="placeholder">Loading exchange rates…</div>
+    </div>
+
+    <div class="section-head" style="margin-top:28px;">
+      <h2 style="font-size:22px;">Global Markets</h2>
+    </div>
+    <p class="note">Track two of the world's most watched financial assets. Gold reflects traditional market confidence, while Bitcoin offers insight into the fast-moving digital asset market.</p>
+    <div class="grid markets" id="marketsGrid">
+      <div class="placeholder">Loading market data…</div>
+    </div>
+  </section>
+
+  <svg class="motif" viewBox="0 0 400 14" preserveAspectRatio="none" aria-hidden="true">
+    <polyline points="0,14 20,0 40,14 60,0 80,14 100,0 120,14 140,0 160,14 180,0 200,14 220,0 240,14 260,0 280,14 300,0 320,14 340,0 360,14 380,0 400,14" fill="none" stroke="#52806b" stroke-width="1.4" opacity="0.55"/>
+  </svg>
+
+  <section id="weather">
+    <div class="section-head">
+      <h2>Weather — Ten Districts</h2>
+      <span class="refresh-tag" id="wxUpdated">—</span>
+    </div>
+    <p class="note">Stay informed with real-time weather updates from every district capital. An intuitive colour scale highlights current conditions at a glance: blue (cold), green (pleasant), amber (warm), and red (hot).</p>
+    <div class="grid weather" id="wxGrid">
+      <div class="placeholder">Loading weather…</div>
+    </div>
+  </section>
+<footer>
+  <div class="cols">
+    <div>
+      <h3>Data Sources</h3>
+      <ul>
+        <li>European Central Bank exchange rates</li>
+        <li>Open-Meteo weather data</li>
+        <li>CoinGecko market data</li>
+      </ul>
+    </div>
+
+    <div>
+      <h3>Update Frequency</h3>
+      <ul>
+        <li>Exchange rates – every 5 minutes</li>
+        <li>Gold & Bitcoin – every 5 minutes</li>
+        <li>Weather – every 15 minutes</li>
+      </ul>
+    </div>
+
+    <div>
+      <h3>About Lesotho Pulse</h3>
+      <ul>
+        <li>Real-time economic and environmental insights</li>
+        <li>Designed for citizens, businesses, researchers and investors</li>
+        <li>Independent, data-driven public dashboard</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="credit">
+    © 2026 Lesotho Pulse • Built by Mokhali Shale • Delivering real-time insights into Lesotho's economy, markets and weather.
+  </div>
+</footer>
+</div>
+
+<script>
+const fmt = (n, d=2) => Number(n).toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d});
+const timeNow = () => new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+function sparkSVG(values){
+  if(!values || values.length < 2) return '';
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = (max - min) || 1;
+  const pts = values.map((v,i) => {
+    const x = (i/(values.length-1))*100;
+    const y = 26 - ((v-min)/range)*22 - 2;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return `<svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline points="${pts}"/></svg>`;
+}
+
+function deltaEl(pct){
+  const cls = pct > 0.02 ? 'up' : pct < -0.02 ? 'down' : 'flat';
+  const arrow = pct > 0.02 ? '▲' : pct < -0.02 ? '▼' : '—';
+  return `<span class="delta ${cls}">${arrow} ${fmt(Math.abs(pct),2)}% (7d)</span>`;
+}
+
+/* ---------------- Exchange rates ---------------- */
+async function loadFX(){
+  try{
+    const symbols = 'ZAR,EUR,GBP,CNY';
+    const latestRes = await fetch(`https://api.frankfurter.app/latest?from=USD&to=${symbols}`);
+    const latest = await latestRes.json();
+
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate()-7);
+    const iso = d => d.toISOString().slice(0,10);
+    const histRes = await fetch(`https://api.frankfurter.app/${iso(start)}..${iso(end)}?from=USD&to=${symbols}`);
+    const hist = await histRes.json();
+    const dates = Object.keys(hist.rates || {}).sort();
+
+    const series = {};
+    ['ZAR','EUR','GBP','CNY'].forEach(sym => {
+      series[sym] = dates.map(dt => hist.rates[dt][sym]).filter(v => v !== undefined);
+    });
+
+    const cards = [];
+
+    // LSL derived from ZAR peg (1:1)
+    const zarSeries = series['ZAR'] || [];
+    const zarNow = latest.rates.ZAR;
+    const zarWeekAgo = zarSeries[0] ?? zarNow;
+    const zarPct = ((zarNow - zarWeekAgo)/zarWeekAgo)*100;
+    cards.push(`
+      <div class="card">
+        <div class="tag">USD / LSL</div>
+        <div class="figure">${fmt(zarNow)}</div>
+        ${deltaEl(zarPct)}
+        ${sparkSVG(zarSeries)}
+        <div class="peg-note">Loti pegged 1:1 to Rand</div>
+      </div>`);
+
+    const labels = {ZAR:'USD / ZAR', EUR:'USD / EUR', GBP:'USD / GBP', CNY:'USD / CNY'};
+    ['ZAR','EUR','GBP','CNY'].forEach(sym => {
+      const now = latest.rates[sym];
+      const s = series[sym] || [];
+      const weekAgo = s[0] ?? now;
+      const pct = ((now - weekAgo)/weekAgo)*100;
+      cards.push(`
+        <div class="card">
+          <div class="tag">${labels[sym]}</div>
+          <div class="figure">${fmt(now)}</div>
+          ${deltaEl(pct)}
+          ${sparkSVG(s)}
+        </div>`);
+    });
+
+    document.getElementById('fxGrid').innerHTML = cards.join('');
+    document.getElementById('fxUpdated').textContent = `Updated ${timeNow()}`;
+
+    // drive the header pulse line amplitude off today's ZAR volatility
+    const amp = Math.min(20, Math.max(4, Math.abs(zarPct)*6));
+    document.documentElement.style.setProperty('--amp', amp+'px');
+    drawPulse(amp);
+  }catch(e){
+    document.getElementById('fxGrid').innerHTML = '<div class="placeholder">Exchange rate data unavailable right now.</div>';
+  }
+}
+
+/* ---------------- Global markets ---------------- */
+async function loadMarkets(){
+  try{
+    const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,pax-gold&vs_currencies=usd&include_24hr_change=true');
+    const data = await res.json();
+    const rows = [
+      {label:'Gold (per oz, via PAXG)', key:'pax-gold'},
+      {label:'Bitcoin', key:'bitcoin'}
+    ];
+    const cards = rows.map(r => {
+      const price = data[r.key]?.usd;
+      const chg = data[r.key]?.usd_24h_change ?? 0;
+      return `
+        <div class="card">
+          <div class="tag">${r.label}</div>
+          <div class="figure">$${fmt(price)}</div>
+          <span class="delta ${chg>0.02?'up':chg<-0.02?'down':'flat'}">${chg>0.02?'▲':chg<-0.02?'▼':'—'} ${fmt(Math.abs(chg))}% (24h)</span>
+        </div>`;
+    });
+    document.getElementById('marketsGrid').innerHTML = cards.join('');
+  }catch(e){
+    document.getElementById('marketsGrid').innerHTML = '<div class="placeholder">Market data unavailable right now.</div>';
+  }
+}
+
+/* ---------------- Weather ---------------- */
+const districts = [
+  {name:'Maseru', lat:-29.3151, lon:27.4869},
+  {name:'Berea', lat:-29.1494, lon:27.7524},
+  {name:'Leribe', lat:-28.8867, lon:28.0442},
+  {name:"Butha-Buthe", lat:-28.7767, lon:28.2530},
+  {name:'Mokhotlong', lat:-29.2892, lon:29.0703},
+  {name:'Thaba-Tseka', lat:-29.5200, lon:28.6083},
+  {name:"Qacha's Nek", lat:-30.1120, lon:28.6890},
+  {name:'Quthing', lat:-30.4013, lon:27.7009},
+  {name:"Mohale's Hoek", lat:-30.1497, lon:27.4712},
+  {name:'Mafeteng', lat:-29.8200, lon:27.2500},
+];
+
+function weatherClass(temp){
+  if(temp < 10) return 'cold';
+  if(temp < 22) return 'pleasant';
+  if(temp < 28) return 'warm';
+  return 'hot';
+}
+
+async function loadWeather(){
+  try{
+    const lats = districts.map(d=>d.lat).join(',');
+    const lons = districts.map(d=>d.lon).join(',');
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,uv_index,precipitation_probability&daily=sunrise,sunset&timezone=Africa%2FMaseru`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : [data];
+
+    const cards = districts.map((d,i) => {
+      const w = list[i];
+      const cur = w?.current || {};
+      const daily = w?.daily || {};
+      const temp = cur.temperature_2m;
+      const cls = weatherClass(temp ?? 15);
+      const sunrise = daily.sunrise?.[0]?.slice(11,16) ?? '—';
+      const sunset = daily.sunset?.[0]?.slice(11,16) ?? '—';
+      return `
+        <div class="card wcard ${cls}">
+          <div class="district">${d.name}</div>
+          <div class="temp">${temp!==undefined?fmt(temp,1)+'°':'—'}</div>
+          <div class="meta">
+            <span>Feels like <b>${cur.apparent_temperature!==undefined?fmt(cur.apparent_temperature,1)+'°':'—'}</b></span>
+            <span>Humidity <b>${cur.relative_humidity_2m ?? '—'}%</b></span>
+            <span>Wind <b>${cur.wind_speed_10m ?? '—'} km/h</b></span>
+            <span>UV Index <b>${cur.uv_index ?? '—'}</b></span>
+            <span>Rain chance <b>${cur.precipitation_probability ?? '—'}%</b></span>
+            <span>Sun <b>${sunrise}–${sunset}</b></span>
+          </div>
+        </div>`;
+    });
+    document.getElementById('wxGrid').innerHTML = cards.join('');
+    document.getElementById('wxUpdated').textContent = `Updated ${timeNow()}`;
+  }catch(e){
+    document.getElementById('wxGrid').innerHTML = '<div class="placeholder">Weather data unavailable right now.</div>';
+  }
+}
+
+/* ---------------- Header pulse line ---------------- */
+function drawPulse(amp=8){
+  const w = 600, h = 56, mid = h/2;
+  let d = `M0,${mid}`;
+  for(let x=0; x<=w; x+=40){
+    d += ` L${x+10},${mid} L${x+16},${mid-amp} L${x+22},${mid+amp*0.6} L${x+28},${mid}`;
+  }
+  document.getElementById('pulsePath').setAttribute('d', d);
+}
+drawPulse(8);
+
+/* ---------------- Boot + refresh timers ---------------- */
+loadFX();
+loadMarkets();
+loadWeather();
+setInterval(loadFX, 5*60*1000);
+setInterval(loadMarkets, 5*60*1000);
+setInterval(loadWeather, 15*60*1000);
+</script>
+</body>
+</html>
