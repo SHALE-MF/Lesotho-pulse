@@ -256,7 +256,7 @@ async function loadFX(){
   // blanking the whole section.
   let latest = null;
   try{
-    const latestRes = await fetch(`https://api.frankfurter.app/latest?from=USD&to=${symbols}`);
+    const latestRes = await fetch(`https://api.frankfurter.dev/v1/latest?base=USD&symbols=${symbols}`);
     if(!latestRes.ok) throw new Error(`latest fetch failed: ${latestRes.status}`);
     latest = await latestRes.json();
   }catch(e){
@@ -271,7 +271,7 @@ async function loadFX(){
     const start = new Date();
     start.setDate(start.getDate()-7);
     const iso = d => d.toISOString().slice(0,10);
-    const histRes = await fetch(`https://api.frankfurter.app/${iso(start)}..${iso(end)}?from=USD&to=${symbols}`);
+    const histRes = await fetch(`https://api.frankfurter.dev/v1/${iso(start)}..${iso(end)}?base=USD&symbols=${symbols}`);
     if(!histRes.ok) throw new Error(`history fetch failed: ${histRes.status}`);
     const hist = await histRes.json();
     const dates = Object.keys(hist.rates || {}).sort();
@@ -295,7 +295,7 @@ async function loadFX(){
         <div class="figure">${fmt(zarNow)}</div>
         ${deltaEl(zarPct)}
         ${sparkSVG(zarSeries)}
-        <div class="peg-note">Loti pegged 1:1 to Rand</div>
+        
       </div>`);
 
     const labels = {ZAR:'USD / ZAR', EUR:'USD / EUR', GBP:'USD / GBP', CNY:'USD / CNY'};
